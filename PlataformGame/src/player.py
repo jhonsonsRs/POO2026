@@ -1,9 +1,10 @@
-from entity import Entity
-from constants import PLAYER_JUMP_SPEED
 import arcade
+from entity import Entity
+from constants import PLAYER_JUMP_SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
+
 
 class Player(Entity):
-    def __init__(self, sprite: str, scale : float, speed: float, max_health: int):
+    def __init__(self, sprite: str, scale: float, speed: float, max_health: int):
         super().__init__(sprite, scale, speed, max_health)
         self.facing_right = True
         self.current_frame = 0
@@ -11,7 +12,7 @@ class Player(Entity):
         self.frame_speed = 0.1
 
         self.idle_textures = self.load_atlas('../sprites/Frog/frog_idle.png', 4)
-        self.run_textures = self.load_atlas('../sprites/Frog/frog_run.png', 6)
+        self.run_textures  = self.load_atlas('../sprites/Frog/frog_run.png',  6)
         self.jump_textures = self.load_atlas('../sprites/Frog/frog_jump.png', 1)
         self.fall_textures = self.load_atlas('../sprites/Frog/frog_fall.png', 1)
         self.current_textures = self.idle_textures
@@ -19,17 +20,23 @@ class Player(Entity):
         self.jump_speed = PLAYER_JUMP_SPEED
         self.score = 0
         self.is_on_ground = False
-    
-    def update(self, delta_time : float = 1/60, keys: set = None):
+        self.jumps_remaining = 2
+
+    def update(self, delta_time: float = 1/60, keys: set = None):
         if keys is None:
             keys = set()
+
         if arcade.key.LEFT in keys or arcade.key.A in keys:
-            self.change_x = -self.speed 
+            self.change_x = -self.speed
         elif arcade.key.RIGHT in keys or arcade.key.D in keys:
-            self.change_x = self.speed 
-        else: 
+            self.change_x = self.speed
+        else:
             self.change_x = 0
-        
+
+        self.center_x = max(self.width / 2, min(self.center_x, SCREEN_WIDTH - self.width / 2))
+        self.center_y = max(self.height / 2, min(self.center_y, SCREEN_HEIGHT - self.height / 2))
+
+        # animação
         if self.change_y > 0:
             new_textures = self.jump_textures
         elif self.change_y < 0:
@@ -55,17 +62,12 @@ class Player(Entity):
 
         direction = 0 if self.facing_right else 1
         self.texture = self.current_textures[self.current_frame][direction]
-    
+
     def load_atlas(self, path, frame_count):
         sheet = arcade.texture.spritesheet.SpriteSheet(path)
         textures = []
         for i in range(frame_count):
-            rect = arcade.LRBT(
-                left=i * 32,
-                right=i * 32 + 32,
-                bottom=0,
-                top=32
-            )
+            rect = arcade.LRBT(i * 32, i * 32 + 32, 0, 32)
             tex_right = sheet.get_texture(rect)
             sheet.flip_left_right()
             tex_left = sheet.get_texture(rect)
@@ -76,14 +78,15 @@ class Player(Entity):
     def on_key_press(self, key):
         if key == arcade.key.SPACE:
             self.jump()
-    
+
     def on_key_release(self, key):
-        if key == arcade.key.LEFT or key == arcade.key.A:
+        if key in (arcade.key.LEFT, arcade.key.A):
             self.change_x = 0
-        elif key == arcade.key.RIGHT or key == arcade.key.D:
+        elif key in (arcade.key.RIGHT, arcade.key.D):
             self.change_x = 0
 
     def jump(self):
-        if self.is_on_ground:
+        if self.jumps_remaining > 0:
             self.change_y = self.jump_speed
+            self.jumps_remaining -= 1
             self.is_on_ground = False
